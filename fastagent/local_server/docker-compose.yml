@@ -1,0 +1,20 @@
+# Docker Compose per FastAgent Local Server
+services:
+  local-server:
+    build:
+      context: ../../
+      dockerfile: ./fastagent/local_server/Dockerfile
+    container_name: fastagent-local-server
+    # Porta esterna scelta per evitare conflitti con le principali usate sul sistema:
+    # 52100 (non presente nei container in esecuzione)
+    ports:
+      - "52100:5000"
+    volumes:
+      - .:/app/fastagent/local_server # Sincronizzazione per sviluppo
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+
+networks:
+  default:
+    name: fastagent-network

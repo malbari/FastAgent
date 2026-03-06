@@ -3,7 +3,10 @@ import os
 import logging
 from typing import Optional, Tuple
 from PIL import Image
-import pyautogui
+try:
+    import pyautogui
+except Exception:
+    pyautogui = None
 
 logger = logging.getLogger(__name__)
 

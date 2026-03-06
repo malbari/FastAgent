@@ -8,7 +8,10 @@ import json
 import uuid
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file, abort
-import pyautogui
+try:
+    import pyautogui
+except Exception:
+    pyautogui = None
 import threading
 from io import BytesIO
 import tempfile
@@ -24,7 +27,8 @@ platform_name = platform.system()
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
 
-pyautogui.PAUSE = 0
+if pyautogui:
+    pyautogui.PAUSE = 0
 if platform_name == "Darwin":
     pyautogui.DARWIN_CATCH_UP_TIME = 0
 

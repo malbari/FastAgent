@@ -3,16 +3,22 @@ import os
 from typing import Dict, Any, Optional, List
 from fastagent.utils.logging import Logger
 from PIL import Image
-import pyautogui
+try:
+    import pyautogui
+except Exception:
+    pyautogui = None
 
 try:
-    import pyatspi
     from pyatspi import Accessible, StateType, STATE_SHOWING
     import Xlib
     from Xlib import display, X
     LINUX_LIBS_AVAILABLE = True
 except ImportError:
     LINUX_LIBS_AVAILABLE = False
+    # Definizione fittizia per evitare NameError se le librerie mancano
+    class Accessible: pass
+    class StateType: pass
+    STATE_SHOWING = None
 
 logger = Logger.get_logger(__name__)
 
