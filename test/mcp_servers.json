@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "api-to-mcp": {
+      "url": "http://localhost:3001/mcp"
+    },
+    "lightrag-server": {
+      "url": "http://localhost:8092/mcp"
+    },
+    "dbhub-server": {
+      "url": "http://localhost:8180/mcp"
+    },
+    "mcp-server-chart": {
+      "url": "http://localhost:1122/mcp"
+    },
+    "basic-server-preact": {
+      "url": "http://localhost:3101/mcp"
+    },
+    "budget-allocator-server": {
+      "url": "http://localhost:3107/mcp"
+    },
+    "map-server": {
+      "url": "http://localhost:3112/mcp"
+    }
+  }
+}

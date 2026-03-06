@@ -1,4 +1,5 @@
 {
+  "log_level": "WARNING",
   "shell": {
     "timeout": 60,
     "max_retries": 3,

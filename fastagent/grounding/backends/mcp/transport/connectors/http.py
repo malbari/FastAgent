@@ -168,21 +168,24 @@ class HttpConnector(MCPBaseConnector):
             try:
                 # Add timeout to initialize() using asyncio.wait_for to prevent hanging
                 try:
-                    await asyncio.wait_for(test_client.initialize(), timeout=self.timeout)
+                    pre_init_result = await asyncio.wait_for(test_client.initialize(), timeout=self.timeout)
                 except asyncio.TimeoutError:
                     raise TimeoutError(f"initialize() timed out after {self.timeout}s")
                     
                 try:
-                    await asyncio.wait_for(test_client.list_tools(), timeout=self.timeout)
+                    pre_list_tools_result = await asyncio.wait_for(test_client.list_tools(), timeout=self.timeout)
                 except asyncio.TimeoutError:
                     raise TimeoutError(f"list_tools() timed out after {self.timeout}s")
                 
                 # SUCCESS! Keep the client session (don't close it, closing destroys the streams)
-                # Store it directly as the client_session for later use
+                # Store it directly as the client_session for later use.
+                # Also cache the probe results to avoid double-initialize in MCPBaseConnector.initialize()
                 self.transport_type = "streamable HTTP"
                 self._connection_manager = connection_manager
                 self._connection = connection_manager.get_streams()
                 self.client_session = test_client  # Reuse the working session
+                self._pre_init_result = pre_init_result          # Skip re-initialize later
+                self._pre_init_tools = pre_list_tools_result.tools  # Skip re-list_tools later
                 logger.debug("Streamable HTTP transport selected")
                 return
             except TimeoutError:
@@ -232,21 +235,24 @@ class HttpConnector(MCPBaseConnector):
 
             try:
                 try:
-                    await asyncio.wait_for(test_client.initialize(), timeout=self.timeout)
+                    pre_init_result = await asyncio.wait_for(test_client.initialize(), timeout=self.timeout)
                 except asyncio.TimeoutError:
                     raise TimeoutError(f"initialize() timed out after {self.timeout}s")
                 
                 try:
-                    await asyncio.wait_for(test_client.list_tools(), timeout=self.timeout)
+                    pre_list_tools_result = await asyncio.wait_for(test_client.list_tools(), timeout=self.timeout)
                 except asyncio.TimeoutError:
                     raise TimeoutError(f"list_tools() timed out after {self.timeout}s")
                 
                 # SUCCESS! Keep the client session (don't close it, closing destroys the streams)
-                # Store it directly as the client_session for later use
+                # Store it directly as the client_session for later use.
+                # Also cache the probe results to avoid double-initialize in MCPBaseConnector.initialize()
                 self.transport_type = "SSE"
                 self._connection_manager = connection_manager
                 self._connection = connection_manager.get_streams()
                 self.client_session = test_client  # Reuse the working session
+                self._pre_init_result = pre_init_result          # Skip re-initialize later
+                self._pre_init_tools = pre_list_tools_result.tools  # Skip re-list_tools later
                 logger.debug("SSE transport selected")
                 return
             except TimeoutError:

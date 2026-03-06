@@ -131,17 +131,40 @@ class MCPBaseConnector(BaseConnector[ClientSession]):
 
         logger.debug("Initializing MCP session")
 
-        # Initialize the session
-        result = await self.client_session.initialize()
+        # Check if _before_connect already probed the session (Streamable HTTP / SSE transport).
+        # In that case, calling initialize() again on the same ClientSession would send a second
+        # MCP initialize request to an already-initialized session, causing servers to return
+        # 400 Bad Request → McpError "Connection closed". Use the cached probe results instead.
+        pre_init = getattr(self, '_pre_init_result', None)
+        pre_tools = getattr(self, '_pre_init_tools', None)
 
-        server_capabilities = result.capabilities
+        if pre_init is not None:
+            # Use cached probe results - clear them so they're only used once
+            result = pre_init
+            self._pre_init_result = None
+            self._pre_init_tools = None
 
-        if server_capabilities.tools:
-            # Get available tools
-            tools_result = await self.list_tools()
-            self._tools = tools_result or []
+            server_capabilities = result.capabilities
+
+            if server_capabilities.tools and pre_tools is not None:
+                self._tools = pre_tools
+            elif server_capabilities.tools:
+                tools_result = await self.list_tools()
+                self._tools = tools_result or []
+            else:
+                self._tools = []
         else:
-            self._tools = []
+            # Normal path: send initialize request to server
+            result = await self.client_session.initialize()
+
+            server_capabilities = result.capabilities
+
+            if server_capabilities.tools:
+                # Get available tools
+                tools_result = await self.list_tools()
+                self._tools = tools_result or []
+            else:
+                self._tools = []
 
         if server_capabilities.resources:
             # Get available resources

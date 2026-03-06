@@ -353,6 +353,8 @@ class LLMClient:
         self.litellm_kwargs = litellm_kwargs
         self._logger = Logger.get_logger(__name__)
         self._last_call_time = 0.0
+        # Token usage tracking
+        self._usage_log: List[Dict] = []
     
     async def _rate_limit(self):
         """Apply rate limiting by adding delay between API calls"""
@@ -384,6 +386,20 @@ class LLMClient:
                     litellm.acompletion(**completion_kwargs),
                     timeout=self.timeout
                 )
+                # Track token usage
+                try:
+                    usage = getattr(response, "usage", None)
+                    if usage:
+                        self._usage_log.append({
+                            "model": completion_kwargs.get("model", self.model),
+                            "endpoint": self.litellm_kwargs.get("api_base", ""),
+                            "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+                            "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+                            "total_tokens": getattr(usage, "total_tokens", 0) or 0,
+                            "timestamp": time.time(),
+                        })
+                except Exception:
+                    pass
                 return response
             except asyncio.TimeoutError:
                 self._logger.error(
@@ -688,3 +704,38 @@ class LLMClient:
             content = msg.get("content", "")
             formatted += f"[{role}]\n{content}\n\n"
         return formatted
+
+    def get_usage_summary(self) -> Dict:
+        """Return token usage summary for all LLM calls made by this client.
+
+        Returns a dict with:
+            - calls: list of individual call records
+            - totals: aggregated token counts and optional cost estimate
+        """
+        totals = {
+            "calls": len(self._usage_log),
+            "prompt_tokens": sum(r["prompt_tokens"] for r in self._usage_log),
+            "completion_tokens": sum(r["completion_tokens"] for r in self._usage_log),
+            "total_tokens": sum(r["total_tokens"] for r in self._usage_log),
+        }
+        # Estimated cost via litellm if available
+        try:
+            cost = litellm.completion_cost(
+                model=self.model,
+                prompt_tokens=totals["prompt_tokens"],
+                completion_tokens=totals["completion_tokens"],
+            )
+            totals["estimated_cost_usd"] = round(cost, 6)
+        except Exception:
+            totals["estimated_cost_usd"] = None
+
+        return {
+            "calls": self._usage_log,
+            "totals": totals,
+            "model": self.model,
+            "endpoint": self.litellm_kwargs.get("api_base", ""),
+        }
+
+    def reset_usage(self) -> None:
+        """Reset the token usage log."""
+        self._usage_log = []
